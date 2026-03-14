@@ -51,9 +51,6 @@ class upp_sovler_d(fdsolver):
 
 
     def solve(self):
-        print(self.ab)
-        print(self.y)
-        print(self.x)
         self.y[0] = self.boundary_start[1]
         self.y[-1] = self.boundary_end[1]
 
