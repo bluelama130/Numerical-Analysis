@@ -1,20 +1,21 @@
 import numpy as np
-from scipy.linalg import solve_banded
-class fdsolver:
+from scipy.linalg import solve_banded, norm
+class solver:
     def __init__(self, start=0, end=1, n=10,
-                 boundary_start=('dirichlet', 0),
-                 boundary_end=('dirichlet', 0), 
-                 f=None):
+                 boundary_start=('dirichlet',0),
+                 boundary_end = ('dirichlet',0)):
         self.set_boundary(boundary_start, boundary_end)
         self.set_interval(start, end, n)
-        if f != None:
-            self.f = f
+        
 
     def set_n(self, n):
         self.n = n
         self.x, self.h = np.linspace(self.start, self.end, n+1, endpoint=True, retstep=True)
         self.y = np.zeros(n+1, dtype=float)
-
+    
+    def set_h(self, h):
+        self.n = int(round((self.end - self.start)/h))
+        self.set_n(self.n)
         
     def set_interval(self, start, end, n):
         self.start = start
@@ -24,7 +25,18 @@ class fdsolver:
     def set_boundary(self, boundary_start, boundary_end):
         self.boundary_start = boundary_start
         self.boundary_end= boundary_end
-        
+
+    def solve(self):
+        pass
+
+class fdsolver(solver):
+    def __init__(self, start=0, end=1, n=10,
+                 boundary_start=('dirichlet', 0),
+                 boundary_end=('dirichlet', 0), 
+                 f=None):
+        super().__init__(start, end, n, boundary_start, boundary_end)
+        if f != None:
+            self.f = f
     
     def _build_matrix(self):
         pass
@@ -32,8 +44,6 @@ class fdsolver:
     def set_f(self, f):
         self.f = f
 
-    def solve(self):
-        pass
     
 
 class upp_sovler_d(fdsolver):
@@ -215,4 +225,31 @@ class upp_solver_n3(fdsolver):
         return ret_x, ret_y
        
 
+#nonlinear solver, neumann condition is not implemented
+class nl_solver(solver):
+    def __init__(self, start=0, end=1, n=10,
+                 boundary_start=('dirichlet', 0),
+                 boundary_end=('dirichlet', 0), 
+                 tol=1e-5, max_it=1000):
+        super().__init__(start, end, n, boundary_start, boundary_end)
+        self.tol = tol
+        self.max_it = max_it
+    
+    def newton_method(self, G, J, init_y, max_it, tol):
+        n = len(init_y)
+        y = init_y
+        for i in range(max_it):
+            J_val = np.array([[self.J[i][j](y) for j in range(n)] for i in range(n)])
+            G_val = np.array([self.G[i](y) for i in range(n)])
+            y_next = np.linalg.solve(J_val, -G_val)
+            
+            if norm(y_next-y) < tol:
+                break
+            y = y_next
+        return y
+
         
+    def solve(self):
+        y = self.newton_method(self.G, self.J, self.init_y, self.max_it, self.tol)         
+        return y
+ 
